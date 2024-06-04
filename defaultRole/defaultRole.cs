@@ -22,7 +22,8 @@ namespace Willy_bot.commands
             1247184625739104327, // Example User ID 1
             155149108183695360,  // Example User ID 2
             184405311681986560,
-            375805687529209857
+            375805687529209857,
+            235148962103951360
         };
 
         public static async Task OnGuildMemberAdded(DiscordClient sender, GuildMemberAddEventArgs e)
