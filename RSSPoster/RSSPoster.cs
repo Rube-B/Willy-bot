@@ -51,7 +51,7 @@ namespace Willy_bot
                 using (var httpClient = new HttpClient())
                 {
                     var response = await httpClient.GetStringAsync(feedUrl);
-                    using (var stringReader = new System.IO.StringReader(response))
+                    using (var stringReader = new StringReader(response))
                     {
                         using (var xmlReader = XmlReader.Create(stringReader))
                         {
@@ -105,8 +105,7 @@ namespace Willy_bot
                 Console.WriteLine($"Error fetching the RSS feed from {feedUrl}: {ex.Message}");
             }
         }
-        //works with treshold but than you get 2 pictures
-        
+
         private string GetImageUrl(SyndicationItem item)
         {
             /*
@@ -130,7 +129,7 @@ namespace Willy_bot
 
             // Check if the item has an <image> element in its content
             var content = item.Content as TextSyndicationContent;
-            if (content != null && content.Text.Contains("<img"))
+            if (content != null && content.TextContains("<img"))
             {
                 var doc = new XmlDocument();
                 doc.LoadXml(content.Text);

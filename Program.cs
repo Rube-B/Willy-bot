@@ -58,23 +58,24 @@ namespace Willy_bot
 
             await Client.ConnectAsync();
 
-            // Start the periodic role check
+            // Start role check
             _ = DefaultRole.StartPeriodicRoleCheck(Client);
 
-            // Start the RSS poster with multiple feeds
             var rssFeeds = new List<string>
             {
                 "https://www.fselite.net/feed/",
                 "https://www.thresholdx.net/news/rss.xml"
             };
-            var rssPoster = new RSSPoster(Client, 1175094941014294578, rssFeeds);
+            var rssPoster = new Willy_bot.RSSPoster(Client, 1175094941014294578, rssFeeds);
             await rssPoster.StartAsync();
+
 
             // Initialize the last number in the monitored channel
             await InitializeLastNumberInChannel(monitorChannelId); // Replace with your channel ID
 
             await Task.Delay(-1);
         }
+
         /*
         private static async Task Client_Ready(DiscordClient sender, ReadyEventArgs args)
         {
@@ -96,6 +97,7 @@ namespace Willy_bot
             await channel.AddOverwriteAsync(everyoneRole, permissions, Permissions.None);
         }
         */
+
         private static async Task InitializeLastNumberInChannel(ulong channelId)
         {
             var channel = await Client.GetChannelAsync(channelId);
