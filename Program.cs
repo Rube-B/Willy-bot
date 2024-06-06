@@ -66,7 +66,7 @@ namespace Willy_bot
                 "https://www.fselite.net/feed/",
                 "https://www.thresholdx.net/news/rss.xml"
             };
-            var rssPoster = new Willy_bot.RSSPoster(Client, 1175094941014294578, rssFeeds);
+            var rssPoster = new RSSPoster(Client, 1175094941014294578, rssFeeds);
             await rssPoster.StartAsync();
 
 

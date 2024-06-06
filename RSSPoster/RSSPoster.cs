@@ -8,17 +8,20 @@ using System.Threading.Tasks;
 using System.Xml;
 using DSharpPlus;
 using DSharpPlus.Entities;
+using System.Timers;
+using Timer = System.Timers.Timer;
 
 namespace Willy_bot
 {
     public class RSSPoster
     {
+        private Timer _timer;
         private readonly DiscordClient _client;
         private readonly ulong _channelId;
         private readonly List<string> _feedUrls;
         private DateTimeOffset _lastPublishedDate;
-        private readonly HashSet<string> _postedLinks; // To keep track of posted links
-        private const string PostedLinksFile = "posted_links.txt"; // File to store posted links
+        private HashSet<string> _postedLinks;
+        private readonly string _postedLinksFile = "posted_links.txt";
 
         public RSSPoster(DiscordClient client, ulong channelId, List<string> feedUrls)
         {
@@ -28,16 +31,36 @@ namespace Willy_bot
             _lastPublishedDate = DateTimeOffset.MinValue; // Initialize with a very old date
             _postedLinks = new HashSet<string>(); // Initialize the HashSet
 
+            // Load the initial set of posted links
             LoadPostedLinks();
+
+            // Set up a timer that triggers every 60 seconds.
+            _timer = new Timer(60000);
+            _timer.Elapsed += (sender, e) => UpdatePostedLinks();
+            _timer.AutoReset = true;
+            _timer.Enabled = true;
+        }
+
+        private void UpdatePostedLinks()
+        {
+            LoadPostedLinks();
+            Console.WriteLine("Updated posted links from file.");
         }
 
         public async Task StartAsync()
         {
-            var timer = new System.Threading.Timer(async _ => await CheckFeedsAsync(), null, TimeSpan.Zero, TimeSpan.FromMinutes(10));
+            Console.WriteLine("RSSPoster started.");
+            while (true)
+            {
+                await CheckFeedsAsync();
+                Console.WriteLine("Checked feeds.");
+                await Task.Delay(TimeSpan.FromMinutes(1));
+            }
         }
 
         private async Task CheckFeedsAsync()
         {
+            Console.WriteLine("Checking feeds...");
             foreach (var feedUrl in _feedUrls)
             {
                 await CheckFeedAsync(feedUrl);
@@ -48,6 +71,7 @@ namespace Willy_bot
         {
             try
             {
+                Console.WriteLine($"Fetching feed from {feedUrl}");
                 using (var httpClient = new HttpClient())
                 {
                     var response = await httpClient.GetStringAsync(feedUrl);
@@ -70,6 +94,7 @@ namespace Willy_bot
 
                             if (newItems.Any())
                             {
+                                Console.WriteLine($"Found {newItems.Count} new items.");
                                 _lastPublishedDate = newItems.Max(item => item.PublishDate);
 
                                 var channel = await _client.GetChannelAsync(_channelId);
@@ -80,21 +105,21 @@ namespace Willy_bot
                                     var imageUrl = GetImageUrl(item);
                                     if (!string.IsNullOrEmpty(imageUrl))
                                     {
-                                        // Add the image URL directly to the message content
                                         messageContent += $"\n{imageUrl}";
                                     }
 
-                                    // Send the message and add a line separator
                                     await channel.SendMessageAsync(messageContent);
-                                    //await channel.SendMessageAsync("--------------------------------------------------");
+                                    Console.WriteLine($"Posted: {messageContent}");
 
-                                    // Add the link to the HashSet and save to file to avoid reposting
                                     _postedLinks.Add(item.Id);
                                     SavePostedLinks();
 
-                                    // Wait for 60 seconds before posting the next item
                                     await Task.Delay(TimeSpan.FromSeconds(60));
                                 }
+                            }
+                            else
+                            {
+                                Console.WriteLine("No new items found.");
                             }
                         }
                     }
@@ -108,63 +133,39 @@ namespace Willy_bot
 
         private string GetImageUrl(SyndicationItem item)
         {
-            /*
-            // Check if the item has media content (e.g., media:content or media:thumbnail)
-            var mediaContent = item.ElementExtensions
-                .Where(ext => ext.OuterName == "content" && ext.OuterNamespace == "http://search.yahoo.com/mrss/")
-                .Select(ext => ext.GetObject<XmlElement>())
-                .FirstOrDefault();
-
-            if (mediaContent != null)
-            {
-                return mediaContent.GetAttribute("url");
-            }
-
-            // Check if the item has an enclosure with a type that indicates an image
-            var enclosure = item.Links.FirstOrDefault(link => link.RelationshipType == "enclosure" && link.MediaType.StartsWith("image/"));
-            if (enclosure != null)
-            {
-                return enclosure.Uri.ToString();
-            }
-
-            // Check if the item has an <image> element in its content
-            var content = item.Content as TextSyndicationContent;
-            if (content != null && content.TextContains("<img"))
-            {
-                var doc = new XmlDocument();
-                doc.LoadXml(content.Text);
-                var imgNode = doc.SelectSingleNode("//img");
-                if (imgNode != null && imgNode.Attributes["src"] != null)
-                {
-                    return imgNode.Attributes["src"].Value;
-                }
-            }
-            */
-
+            // Your implementation for extracting image URL if necessary
             return null;
         }
 
         private void LoadPostedLinks()
         {
-            if (File.Exists(PostedLinksFile))
+            _postedLinks.Clear();
+            if (File.Exists(_postedLinksFile))
             {
-                var lines = File.ReadAllLines(PostedLinksFile);
+                var lines = File.ReadAllLines(_postedLinksFile);
                 foreach (var line in lines)
                 {
                     _postedLinks.Add(line);
                 }
+                Console.WriteLine($"Loaded {lines.Length} posted links.");
+            }
+            else
+            {
+                Console.WriteLine("No posted links file found.");
             }
         }
 
         private void SavePostedLinks()
         {
-            File.WriteAllLines(PostedLinksFile, _postedLinks);
+            File.WriteAllLines(_postedLinksFile, _postedLinks);
+            Console.WriteLine("Posted links saved.");
         }
 
         public void ResetPostedLinks()
         {
             _postedLinks.Clear();
-            File.WriteAllLines(PostedLinksFile, _postedLinks);
+            File.WriteAllLines(_postedLinksFile, _postedLinks);
+            Console.WriteLine("Posted links reset.");
         }
     }
 }
